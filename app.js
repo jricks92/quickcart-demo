@@ -86,3 +86,9 @@ document.addEventListener("click", (e) => {
 
 renderProducts();
 renderCart();
+
+// Show a promo banner named in the URL fragment, e.g. #promo=SUMMER
+function renderPromo() {
+  const raw = decodeURIComponent(location.hash.replace(/^#promo=/, ""));
+  document.getElementById("promo").innerHTML = "Promo: " + raw;
+}
