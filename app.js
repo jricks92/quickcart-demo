@@ -20,7 +20,7 @@ function productById(id) {
 // Compute the cart total in dollars.
 function cartTotal() {
   return cart.reduce((sum, item) => {
-    return sum + item.quantity;
+    return sum + productById(item.id).price * item.quantity;
   }, 0);
 }
 
