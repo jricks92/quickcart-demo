@@ -42,7 +42,7 @@ fi
 echo ">>> Diff produced:"
 git --no-pager diff --stat
 
-git config user.email "11687083+hardikvasa@users.noreply.github.com"
+git config user.email "bot@agenttier.github.io"
 git config user.name "AgentTier Bot"
 git add -A
 git commit -q -m "Fix: ${ISSUE_TITLE} (closes #${ISSUE_NUMBER})"
