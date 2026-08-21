@@ -83,7 +83,8 @@ RESULT=""
 for i in $(seq 1 60); do
   sleep 10
   out="$(api -X POST "$ROUTER_URL/api/v1/sandboxes/$SBX/exec" -H 'Content-Type: application/json' --data @"$WORK/poll.json")"
-  if printf '%s' "$out" | grep -q '"stdout":"DONE'; then
+  # Pattern match, not grep -q: see the note on the REVIEW_OK check below.
+  if case "$out" in *'"stdout":"DONE'*) true ;; *) false ;; esac; then
     RESULT="$(printf '%s' "$out" | python3 -c 'import sys,json; print(json.load(sys.stdin)["stdout"])')"
     break
   fi
@@ -97,7 +98,11 @@ printf '%s\n' "$RESULT"
 # Collect the findings payload (base64 avoids JSON-in-JSON escaping issues).
 FINDINGS='[]'
 REVIEW_OK=0
-if printf '%s' "$RESULT" | grep -q 'REVIEW_OK'; then
+# Match with a case pattern rather than piping into grep -q: grep exits on the
+# first match, and the resulting SIGPIPE on printf trips pipefail, which would
+# make this test fail even when the sentinel is present.
+case "$RESULT" in *REVIEW_OK*) REVIEW_FOUND=1 ;; *) REVIEW_FOUND=0 ;; esac
+if [ "$REVIEW_FOUND" -eq 1 ]; then
   REVIEW_OK=1
   cout="$(api -X POST "$ROUTER_URL/api/v1/sandboxes/$SBX/exec" -H 'Content-Type: application/json' --data @"$WORK/collect.json")"
   decoded="$(printf '%s' "$cout" | python3 -c '
