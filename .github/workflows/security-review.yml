@@ -1,0 +1,46 @@
+name: AgentTier security review
+
+# Every pull request gets a Claude Code security review, run inside an
+# AgentTier sandbox. Findings are posted as a single summary comment; the job
+# fails if any HIGH-severity finding survives filtering.
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+# One review per PR at a time; a newer push supersedes an in-flight review.
+concurrency:
+  group: security-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Narrower than agent-fix.yml: the reviewer never pushes code.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    # Fork PRs get a read-only token and no secrets, so commenting would fail.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, agenttier]
+    timeout-minutes: 20
+    steps:
+      # Pin to the base branch on purpose. checkout defaults to the PR merge
+      # ref, which would let a pull request edit the audit instructions or the
+      # agent scripts that review it. The trade-off: changes to those files
+      # only take effect once merged.
+      - name: Checkout base ref (trusted agent scripts and audit instructions)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Dispatch AgentTier review sandbox
+        env:
+          ROUTER_URL: http://agenttier-router.agenttier.svc.cluster.local:8080
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x .github/agent/security-review.sh .github/agent/agent-security-review.sh
+          .github/agent/security-review.sh
